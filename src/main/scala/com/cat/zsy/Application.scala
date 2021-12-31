@@ -11,8 +11,10 @@ object Application extends App {
 
   val begin = System.currentTimeMillis()
 
-  // show()
+//  show()
   choose()
+//  show(codes)
+//  now()
 
   val end = System.currentTimeMillis()
 
@@ -21,31 +23,84 @@ object Application extends App {
   def choose(): Unit = {
     val list = DataFactory.listAllDataFromFilepath(dir)
 
-    val filterList = List(
-      list.filter(o => StrategyFactory.oscillation(o, 100, 12))
-      // list.filter(o => StrategyFactory.oscillation(o, 200, 18))
-      // list.filter(o => StrategyFactory.oscillation(o, 300, 16))
-    )
+    val r = list
+      .map(o => StrategyFactory.oscillations(o, List(100, 200, 300, 400)))
+      .filter(_.indicators.nonEmpty) // 已退市的垃圾股
+      .filter(o => o.indicators.count(_.enough) >= 2) // 统计区间不足的
+      .filter(_.avgDownOscillation <= 35)
 
-    val result = filterList.reduce((a, b) => a.intersect(b))
-
-    log.info(s"满足条件的有:${result.size}只:")
-
-    result
-      .map(o => (o.code.substring(0, 2), o.code))
-      .groupBy(tuple => tuple._1)
-      .map(o => o._2.map(t => t._2.substring(2)).mkString(";"))
+    r.map(_.toString)
       .foreach(log.info)
+
+    log.info("满足条件的有:{}只", r.size)
+    log.info(r.map(_.stock.code.substring(2)).sorted.mkString(";"))
   }
 
-  def show(): Unit = {
-    val code = "sz" + "000591"
-    // val code = "sh" + "600085"
-    val data = DataFactory.getStockSeqByCodeFromDir(code, dir)
+  def show(codes: Seq[String]): Unit = {
+    val nameCodes = List(
+      ("银泰黄金", "000975"), // 2
+      ("通富微电", "002156"), // 1
+      ("高盟新材", "300200"), // 1
+      ("金太阳", "300606"), // 1
+      ("王府井", "600859"), // 3
+      ("中国太保", "601601"), // 1
+      ("百合花", "603823"), // 1
+      ("华生科技", "605180"), // 2
+      ("三花智控", "002050"), // 2
+      ("圣元环保", "300867")
+    )
+//    深圳
+//    val code = "sz" + "300718" // 长盛轴承
+//    val code = "sz" + "300461" // 田中精机
+//    val code = "sz" + "002043" // 兔宝宝
+//    val code = "sz" + "002278" // 神开股份
+//    val code = "sz" + "300200" // 高盟新材
+//    val code = "sz" + "300867" // 圣元环保
+//    val code = "sz" + "300606" // 金太阳
+//    val code = "sz" + "300634" //
+    // 上海
+//    val code = "sh" + "603535" // 嘉诚国际
+//    val code = "sh" + "688466" // 金科环境
+//    val code = "sh" + "601727" // 上海电气
 
-    val seq = StockSeq(code, data)
-    log.info(seq.toString)
+    codes.foreach(showList)
 
-    log.info(StrategyFactory.oscillation(seq, 100, detail = true).toString)
+    def showList(code: String): Unit = {
+      val preCode = if (code.startsWith("6")) "sh" + code else "sz" + code
+      val data = DataFactory.getStockSeqByCodeFromDir(preCode, dir)
+
+      val seq = StockSeq(code, data)
+
+      log.info(StrategyFactory.oscillation(seq, 100, detail = true).toString)
+      log.info(StrategyFactory.oscillation(seq, 200, detail = true).toString)
+      log.info(StrategyFactory.oscillation(seq, 300, detail = true).toString)
+      log.info(StrategyFactory.oscillation(seq, 400, detail = true).toString)
+      log.info(StrategyFactory.oscillation(seq, 500, detail = true).toString)
+      log.info(StrategyFactory.oscillation(seq, 600, detail = true).toString)
+      log.info("------------------------------------------\n")
+    }
+
+  }
+
+  def now(): Unit = {
+    val list = DataFactory.listAllDataFromFilepath(dir)
+
+    val r = list
+      .filter(o => StrategyFactory.now(o, 300, Option.empty, 3, 10))
+      .map(_.code.substring(2))
+      .mkString(";")
+
+    log.info(r)
+  }
+
+  def print(): Unit = {
+    val sz = "300461;002050;300718;002043;000063;000888;002851;000938;002278;300200;300867;"
+      .split(";")
+      .distinct
+      .toList
+      .sorted
+      .map(c => "sz" + c)
+      .map(c => StockSeq(c, DataFactory.getStockSeqByCodeFromDir(c, dir)))
+      .map(d => ())
   }
 }

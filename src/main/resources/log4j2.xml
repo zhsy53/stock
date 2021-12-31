@@ -12,7 +12,7 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="com.cat.zsy.strategy" level="DEBUG" additivity="true"/>
+        <Logger name="com.cat.zsy.strategy" level="debug" additivity="true"/>
 
         <Root level="INFO">
             <AppenderRef ref="Console"/>
