@@ -1,6 +1,6 @@
 package com.cat.zsy.domain
 
-case class StockSeq(code: String, data: Seq[StockElement]) {
+case class TongStockHistory(code: String, data: Seq[TongStockElement]) {
   override def toString: String = s"""
                                      |[编码]:$code
                                      |${data.mkString("\n")}

@@ -1,7 +1,10 @@
 package com.cat.zsy.strategy
-import com.cat.zsy.strategy.StrategyFactory.intToDecimal
+import com.cat.zsy.util.StockUtils.intToDecimal
 
-case class StrategicIndicators(
+/**
+ * 指标
+ */
+case class TongStockIndicators(
     /**
      * 统计周期
      */
@@ -20,7 +23,7 @@ case class StrategicIndicators(
     /**
      * 当前(最后)价
      */
-    current: Int,
+    last: Int,
 
     /**
      * 震荡曲线
@@ -35,7 +38,7 @@ case class StrategicIndicators(
   override def toString: String =
     s"""
       |统计区间:${period}天(区间长度:${if (enough) "足够" else "不足"})
-      |当前价:${intToDecimal(current)}\t均价:${intToDecimal(avg)}\t最长低谷期:${maxDownOscillation}\t平均振幅:${intToDecimal(avgAmplitude)}
+      |当前价:${intToDecimal(last)}\t均价:${intToDecimal(avg)}\t最长低谷期:$maxDownOscillation\t平均振幅:${intToDecimal(avgAmplitude)}
       |震荡曲线:${oscillation.mkString(",")}
       |振幅曲线:${amplitude.takeRight(10).mkString(",")}
       |""".stripMargin
