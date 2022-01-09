@@ -2,7 +2,7 @@ package com.cat.zsy
 
 import com.cat.zsy.api.{SinaQuotesApi, TongStockApi}
 import com.cat.zsy.domain.TongStockHistory
-import com.cat.zsy.strategy.OscillationCalculator
+import com.cat.zsy.strategy.{OscillationCalculator, TongStockIndicatorsList}
 import com.cat.zsy.util.StockUtils
 import com.cat.zsy.util.StockUtils.intToDecimal
 import org.slf4j.LoggerFactory
@@ -17,13 +17,13 @@ import org.slf4j.LoggerFactory
  * 其中:300369;002214;
  */
 object Application extends App {
-  private val log = LoggerFactory.getLogger(this.getClass)
-
-  private val dir = "D:\\stock"
+  val log = LoggerFactory.getLogger(this.getClass)
+  val dir = "/Users/xiu/Downloads/stock"
+  //  private val dir = "D:\\stock"
 
   val begin = System.currentTimeMillis()
-
-  val codes = choose()
+  val codes = choose2()
+  val end = System.currentTimeMillis()
 
 //  val codes = "300369;300117;002214;000878;300719;600739;603186;600988;"
 //    .split(";")
@@ -31,31 +31,12 @@ object Application extends App {
 //    .sorted
 //    .toList
 
+  log.info("共筛出{}只", codes.length)
   log.info(codes.mkString(";"))
 
   show(codes, detail = false)
 
-  val end = System.currentTimeMillis()
-
   log.warn("cost " + (end - begin) + " mills")
-
-  private def choose(): Seq[String] = {
-    val list = TongStockApi.listAllDataFromFilepath(dir)
-
-    val r = list
-      .map(o => OscillationCalculator.calcList(o, List(100, 200, 300, 400)))
-      .filter(_.indicators.nonEmpty) // 已退市的垃圾股
-      .filter(o => o.indicators.count(_.enough) >= 3) // 统计区间不足的
-      .filter(_.avgDownOscillation <= 42) // 低谷驻留时间不超过**
-      .filter(_.avgAmplitude >= 100) // 平均振幅
-//      .filter(o => o.indicators.head.avg >= o.indicators.head.last * 1.08) // 盈利空间
-
-//    r.map(_.toString).foreach(log.info)
-
-    log.info("满足条件的有:{}只\n{}", r.size, r.map(_.stock.code.substring(2)).sorted.mkString(";"))
-
-    r.map(_.stock.code.substring(2)).sorted
-  }
 
   def show(codes: Seq[String], detail: Boolean = false): Unit = {
     val currentMap = SinaQuotesApi.getData(codes).map(o => (o.code.substring(2), o)).toMap
@@ -78,17 +59,58 @@ object Application extends App {
 
       if (avg >= current.currentPrice * 1.05 && current.currentPrice <= 60) {
         log.info(
-          "{}\t{}\t{}\t现价:{}\t均值:{}\t需要{}天\t均值曲线:{}\t震荡曲线:{}",
+          "{}\t{}\t{}\t现价:{}\t均值:{}\t需要{}天\t均值方差:{}\t均值曲线:{}\t震荡曲线:{}",
           if (avg > current.currentPrice) "+" else "",
           code,
           current.name,
           current.currentPrice,
           avg,
           r.indicators.head.maxDownOscillation,
+          f"${StockUtils.stdDev(r.indicators.map(_.avg).map(BigDecimal(_) / 100))}%.2f",
           r.indicators.map(_.avg).map(intToDecimal).mkString("[", ", ", "]"),
           r.indicators.map(_.maxDownOscillation).mkString("[", ", ", "]")
         )
       }
     }
+  }
+
+  private def choose2() = {
+    def avgAndDev(t: TongStockIndicatorsList): (Seq[BigDecimal], Double, Double) = {
+      val avgList = t.indicators.map(_.avg).map(StockUtils.intToDecimal)
+      val avg = StockUtils.mean(avgList) // 均值
+      val dev = StockUtils.stdDev(avgList) // 方差
+
+      (avgList, avg, dev)
+    }
+
+    TongStockApi
+      .listAllDataFromFilepath(dir)
+      .map(o => OscillationCalculator.calcList(o, List(100, 200, 300, 400, 500, 600, 700, 800)))
+      .filter(_.indicators.nonEmpty) // 已退市的垃圾股
+      .filter(o => o.indicators.count(_.enough) >= 3) // 统计区间不足的
+      .filter(_.avgAmplitude >= 150)
+      .map(o => (o.stock.code, avgAndDev(o)))
+      .filter(o => o._2._2 <= 40 && o._2._2 >= 3)
+      .filter(o => o._2._3 <= 0.25)
+      .sortBy(_._2._2)
+      .map(_._1.substring(2))
+  }
+
+  private def choose(): Seq[String] = {
+    val list = TongStockApi.listAllDataFromFilepath(dir)
+
+    val r = list
+      .map(o => OscillationCalculator.calcList(o, List(100, 200, 300, 400)))
+      .filter(_.indicators.nonEmpty) // 已退市的垃圾股
+      .filter(o => o.indicators.count(_.enough) >= 3) // 统计区间不足的
+      .filter(_.avgDownOscillation <= 42) // 低谷驻留时间不超过**
+      .filter(_.avgAmplitude >= 100) // 平均振幅
+//      .filter(o => o.indicators.head.avg >= o.indicators.head.last * 1.08) // 盈利空间
+
+//    r.map(_.toString).foreach(log.info)
+
+    log.info("满足条件的有:{}只\n{}", r.size, r.map(_.stock.code.substring(2)).sorted.mkString(";"))
+
+    r.map(_.stock.code.substring(2)).sorted
   }
 }
