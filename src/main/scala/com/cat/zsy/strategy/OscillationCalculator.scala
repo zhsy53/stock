@@ -8,8 +8,8 @@ import scala.collection.mutable.ListBuffer
  * 均值震荡计算器
  */
 object OscillationCalculator {
-  def calcList(seq: TongStockHistory, periods: Seq[Int]): TongStockIndicatorsList = {
-    TongStockIndicatorsList(seq, periods.map(calc(seq, _)).filter(_.nonEmpty).map(_.get))
+  def calcList(seq: TongStockHistory, periods: Seq[Int]): TongStockCompoundIndicators = {
+    TongStockCompoundIndicators(seq, periods.map(calc(seq, _)).filter(_.nonEmpty).map(_.get))
   }
 
   def calc(seq: TongStockHistory, period: Int): Option[TongStockIndicators] = {
@@ -27,7 +27,7 @@ object OscillationCalculator {
 
     val current = last.closingPrice
 
-    val amplitude = list.map(o => (o.closingPrice - o.openingPrice) * 100 / o.openingPrice)
+    val amplitude = list.map(o => (o.closingPrice - o.openingPrice) * 100.toDouble / o.openingPrice)
 
     val oscillation = mapToUpDown(list.map(_.closingPrice), avg)
 

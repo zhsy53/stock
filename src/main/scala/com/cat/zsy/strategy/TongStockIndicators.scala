@@ -1,12 +1,16 @@
 package com.cat.zsy.strategy
-import com.cat.zsy.util.StockUtils.intToDecimal
+import com.cat.zsy.util.StockUtils
+import com.cat.zsy.util.StockUtils._
+
+import scala.math.BigDecimal.RoundingMode.DOWN
 
 /**
  * 指标
+ * 价格均 * 100
  */
 case class TongStockIndicators(
     /**
-     * 统计周期
+     * 统计周期:天
      */
     period: Int,
 
@@ -18,31 +22,34 @@ case class TongStockIndicators(
     /**
      * 均价
      */
-    avg: Int,
+    avgPrice: Int,
 
     /**
-     * 当前(最后)价
+     * 收盘价
      */
-    last: Int,
+    closingPrice: Int,
 
     /**
-     * 震荡曲线
+     * 震荡曲线:天
      */
     oscillation: Seq[Int],
 
     /**
-     * 振幅
+     * 振幅 * 100
      */
-    amplitude: Seq[Int]
+    amplitude: Seq[Double]
 ) {
   override def toString: String =
     s"""
-      |统计区间:${period}天(区间长度:${if (enough) "足够" else "不足"})
-      |当前价:${intToDecimal(last)}\t均价:${intToDecimal(avg)}\t最长低谷期:$maxDownOscillation\t平均振幅:${intToDecimal(avgAmplitude)}
-      |震荡曲线:${oscillation.mkString(",")}
-      |振幅曲线:${amplitude.takeRight(10).mkString(",")}
+      |统计周期(天):${period}(周期:${if (enough) "足够" else "不足"})
+      |均价:${percentageToDecimal(avgPrice)}\t最长低谷(天):$maxDownOscillation\t平均振幅(%):$avgAmplitude
+      |震荡曲线(天):${formatArray(oscillation)}
+      |振幅曲线(%):${formatArray(amplitude.takeRight(10).map(BigDecimal.valueOf(_).setScale(2, DOWN)))}
       |""".stripMargin
 
+  // 最大低谷
   def maxDownOscillation: Int = -oscillation.min
-  def avgAmplitude: Int = amplitude.map(Math.abs).sum * 100 / amplitude.size
+
+  // 平均振幅
+  def avgAmplitude: BigDecimal = StockUtils.avg(amplitude).setScale(2, DOWN)
 }

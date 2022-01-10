@@ -2,9 +2,8 @@ package com.cat.zsy
 
 import com.cat.zsy.api.{SinaQuotesApi, TongStockApi}
 import com.cat.zsy.domain.TongStockHistory
-import com.cat.zsy.strategy.{OscillationCalculator, TongStockIndicatorsList}
+import com.cat.zsy.strategy.OscillationCalculator
 import com.cat.zsy.util.StockUtils
-import com.cat.zsy.util.StockUtils.intToDecimal
 import org.slf4j.LoggerFactory
 
 /**
@@ -18,27 +17,39 @@ import org.slf4j.LoggerFactory
  */
 object Application extends App {
   val log = LoggerFactory.getLogger(this.getClass)
-  val dir = "/Users/xiu/Downloads/stock"
-  //  private val dir = "D:\\stock"
+//  val dir = "/Users/xiu/Downloads/stock"
+  val dir = "D:\\stock"
+
+  // config
+  val listDuration = List(100, 200, 300, 400, 500, 600)
+  val chooseDuration = List(100, 200, 300, 400, 500, 600)
+  val maxDownOscillation = 44
+  val minAmplitude = 0.01
+  val profitRatio = 0.04
 
   val begin = System.currentTimeMillis()
-  val codes = choose2()
+
+  val codes = list()
+
+  val codes1 =
+    "002043;002050;000888;002207;300718;300461;300200;000063;300094;002851;000938;000712;000927;300719;300369;601919;600988;688981;600739;"
+      .split(";")
+      .distinct
+      .sorted
+      .toList
+
+  log.info("满足条件的有:{}只\n{}", codes.size, codes.mkString(";"))
+
+  choose(codes, table = false, detail = false)
   val end = System.currentTimeMillis()
-
-//  val codes = "300369;300117;002214;000878;300719;600739;603186;600988;"
-//    .split(";")
-//    .distinct
-//    .sorted
-//    .toList
-
-  log.info("共筛出{}只", codes.length)
-  log.info(codes.mkString(";"))
-
-  show(codes, detail = false)
 
   log.warn("cost " + (end - begin) + " mills")
 
-  def show(codes: Seq[String], detail: Boolean = false): Unit = {
+  /**
+   * @param table 满足条件时以表格展示
+   * @param detail 是否显示详情
+   */
+  def choose(codes: Seq[String], table: Boolean = false, detail: Boolean = true): Unit = {
     val currentMap = SinaQuotesApi.getData(codes).map(o => (o.code.substring(2), o)).toMap
     codes.foreach(showList)
 
@@ -48,69 +59,47 @@ object Application extends App {
 
       val seq = TongStockHistory(code, data)
 
-      val r = OscillationCalculator.calcList(seq, List(100, 200, 300, 400, 500, 600, 700, 800))
+      val r = OscillationCalculator.calcList(seq, chooseDuration)
 
       val current = currentMap(r.stock.code)
-      val avg = intToDecimal(r.indicators.head.avg)
+      val avg = StockUtils.percentageToDecimal(r.indicators.map(_.avgPrice).min)
 
+      val currentPrice = current.currentPrice
       if (detail) {
-        log.info(r.toString)
+        log.info(
+          "{}\t现价:{}\n{}",
+          f"${current.name}%-6s",
+          f"$currentPrice%2.2f",
+          r.toString
+        )
       }
 
-      if (avg >= current.currentPrice * 1.05 && current.currentPrice <= 60) {
+      val pass = avg >= currentPrice * (1 + profitRatio) && currentPrice <= 40
+      if (table || pass) {
         log.info(
-          "{}\t{}\t{}\t现价:{}\t均值:{}\t需要{}天\t均值方差:{}\t均值曲线:{}\t震荡曲线:{}",
-          if (avg > current.currentPrice) "+" else "",
+          "{}\t{}\t{}\t现价:{}\t预期盈利:{}\t{}",
+          if (pass) "+++" else "---",
           code,
-          current.name,
-          current.currentPrice,
-          avg,
-          r.indicators.head.maxDownOscillation,
-          f"${StockUtils.stdDev(r.indicators.map(_.avg).map(BigDecimal(_) / 100))}%.2f",
-          r.indicators.map(_.avg).map(intToDecimal).mkString("[", ", ", "]"),
-          r.indicators.map(_.maxDownOscillation).mkString("[", ", ", "]")
+          f"${current.name}%-7s",
+          f"$currentPrice%2.2f",
+          f"${(avg - currentPrice) / currentPrice}%.2f",
+          r.log
         )
       }
     }
   }
 
-  private def choose2() = {
-    def avgAndDev(t: TongStockIndicatorsList): (Seq[BigDecimal], Double, Double) = {
-      val avgList = t.indicators.map(_.avg).map(StockUtils.intToDecimal)
-      val avg = StockUtils.mean(avgList) // 均值
-      val dev = StockUtils.stdDev(avgList) // 方差
-
-      (avgList, avg, dev)
-    }
-
+  private def list(): Seq[String] = {
     TongStockApi
       .listAllDataFromFilepath(dir)
-      .map(o => OscillationCalculator.calcList(o, List(100, 200, 300, 400, 500, 600, 700, 800)))
-      .filter(_.indicators.nonEmpty) // 已退市的垃圾股
+      .map(o => OscillationCalculator.calcList(o, listDuration))
+      .filter(_.indicators.nonEmpty) // 已退市的
       .filter(o => o.indicators.count(_.enough) >= 3) // 统计区间不足的
-      .filter(_.avgAmplitude >= 150)
-      .map(o => (o.stock.code, avgAndDev(o)))
-      .filter(o => o._2._2 <= 40 && o._2._2 >= 3)
-      .filter(o => o._2._3 <= 0.25)
-      .sortBy(_._2._2)
-      .map(_._1.substring(2))
-  }
-
-  private def choose(): Seq[String] = {
-    val list = TongStockApi.listAllDataFromFilepath(dir)
-
-    val r = list
-      .map(o => OscillationCalculator.calcList(o, List(100, 200, 300, 400)))
-      .filter(_.indicators.nonEmpty) // 已退市的垃圾股
-      .filter(o => o.indicators.count(_.enough) >= 3) // 统计区间不足的
-      .filter(_.avgDownOscillation <= 42) // 低谷驻留时间不超过**
-      .filter(_.avgAmplitude >= 100) // 平均振幅
-//      .filter(o => o.indicators.head.avg >= o.indicators.head.last * 1.08) // 盈利空间
-
-//    r.map(_.toString).foreach(log.info)
-
-    log.info("满足条件的有:{}只\n{}", r.size, r.map(_.stock.code.substring(2)).sorted.mkString(";"))
-
-    r.map(_.stock.code.substring(2)).sorted
+      .filter(o => o.avgDownOscillation <= maxDownOscillation || o.maxDownOscillation <= maxDownOscillation * 2) // 低谷驻留时间不超过**
+      .filter(_.avgAmplitude >= minAmplitude * 100) // 平均振幅
+      .filter(o => o.indicators.map(_.avgPrice).min >= o.indicators.head.closingPrice * 1.04) // 盈利空间
+//      .filter(_.avgVariance <= 0.25 * 100)
+//      .sortBy(_.avgVariance)
+      .map(_.stock.code.substring(2))
   }
 }
