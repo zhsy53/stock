@@ -117,6 +117,7 @@ object Application extends App {
 
     val list = TongStockApi
       .listAllDataFromFilepath(dir)
+      .map(o => TongStockHistory(o.code, o.data.drop(22))) // 模拟一个月前预测
       .map(o => IndicatorsCalculator.calc(o, periods, count))
       .filter(o => o.indicators.count(_.enough) >= count) // 排除统计区间不足的
       .filter(o => o.indicators.head.avgPrice <= maxPrice) // 最高单价
