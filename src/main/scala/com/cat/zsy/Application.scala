@@ -2,7 +2,8 @@ package com.cat.zsy
 
 import com.cat.zsy.api.{SinaQuotesApi, TongStockApi}
 import com.cat.zsy.domain.TongStockHistory
-import com.cat.zsy.strategy.{IndicatorsCalculator, TongStockCompoundIndicators}
+import com.cat.zsy.strategy.{IndicatorsCalculator, StrategyOption, TongStockCompoundIndicators}
+import com.cat.zsy.util.StockUtils.percentageToDecimal
 import org.slf4j.LoggerFactory
 
 /**
@@ -16,24 +17,14 @@ import org.slf4j.LoggerFactory
  */
 object Application extends App {
   val log = LoggerFactory.getLogger(this.getClass)
-//  val dir = "/Users/xiu/Downloads/stock"
-  val dir = "D:\\stock"
+  val dir = "/Users/xiu/Downloads/stock"
+//  val dir = "D:\\stock"
 
-  // config
-  val listDuration = List(100, 200, 300, 400, 500, 600)
-  val chooseDuration = List(100, 200, 300, 400, 500, 600)
-  // 最高单价
-  val maxPrice = 35
-  // 最大低谷期
-  val maxDownOscillation = 33
-  // 平均振幅(%)
-  val avgAmplitude = 3.5
-  // 均值方差
-  val avgVariance = 0.014
-  // 最小盈利空间(%)
-  val profitRatio = 4.0
+  val option = StrategyOption.default
 
   val begin = System.currentTimeMillis()
+
+  val allData = TongStockApi.listAllDataFromFilepath(dir)
 
   val myCodes =
     "002370;300094;300461;300718;603212;002050;002043"
@@ -43,91 +34,87 @@ object Application extends App {
       .toList
 
   choose()
-//
-//  choose(codes, table = true, detail = false)
+
+  log.info("---------------")
+
+//  choose(33)
+
   val end = System.currentTimeMillis()
 
   log.warn("cost " + (end - begin) + " mills")
 
-  private def list(): Seq[String] = {
-    TongStockApi
-      .listAllDataFromFilepath(dir)
-      .map(o => TongStockHistory(o.code, o.data.drop(22))) // 模拟一个月前预测
-      .map(o => IndicatorsCalculator.calc(o, listDuration))
-      .filter(o => o.indicators.count(_.enough) >= 4) // 排除统计区间不足的
-      .filter(o => o.avgDownOscillation <= maxDownOscillation || o.maxDownOscillation <= maxDownOscillation * 1.5) // 低谷驻留时间不超过**
-      .filter(_.avgAmplitude >= avgAmplitude) // 平均振幅->行情活跃
-      .filter(o => o.avgVariance <= 0.02) // 均值方差->稳定
-      .filter(o => o.indicators.head.avgPrice <= maxPrice) // 最高单价
-      .filter(o => o.indicators.map(_.avgPrice).min >= o.indicators.head.closingPrice) // 盈利空间
-      .map(_.stock.code.substring(2))
-      .sorted
-  }
+  /**
+   * @param simulation 回退天数 -> 模拟用: <=0则为正式环境
+   */
+  private def choose(simulation: Int = 0): Unit = {
+    log.info("共有{}只", allData.size)
 
-  private def buy(list: Seq[TongStockCompoundIndicators], filter: Boolean = false, detail: Boolean = false, simulation: Boolean = false): Unit = {
-    val codes = list.map(_.stock.code.substring(2))
+    val history = if (simulation > 0) allData.map(o => TongStockHistory(o.code, o.data.dropRight(simulation))) else allData
 
-    val currentMap = SinaQuotesApi.getData(codes).map(o => (o.code.substring(2), o)).toMap
-    val historyMap = list.map(o => (o.stock.code.substring(2), o)).toMap
+    var list = history.map(o => IndicatorsCalculator.calc(o, option.period, option.count))
 
-    codes.foreach(_show)
+    StrategyOption.filter(option).foreach(f => list = list.filter(f))
 
-    def _show(code: String): Unit = {
-      val tong = historyMap(code)
-      val sina = currentMap(code)
-
-      val except = tong.indicators.map(_.avgPrice).take(2).min
-
-      val simulationPrice = tong.indicators.last.closingPrice
-      val currentPrice = sina.currentPrice.toDouble
-      val price = if (simulation) simulationPrice else currentPrice
-
-      val pass = !sina.name.contains("ST") && except >= price
-
-      if (!pass && filter) return
-
-      if (detail) log.info(tong.indicators.map(_.toString).mkString("\n"))
-
-      log.info(
-        "{}\t{}\t{}\t模拟:{}\t现价:{}\t成功:{}\t预期价:{}\t预期盈利:{}\t{}",
-        if (pass) "+++" else "---",
-        code,
-        f"${sina.name}%-7s",
-        f"$simulationPrice%2.2f",
-        f"$currentPrice%2.2f",
-        s"${currentPrice >= simulationPrice}",
-        f"$except%.2f",
-        f"${(except - currentPrice) * 100 / currentPrice}%.2f${"%"}",
-        tong.toString
-      )
-    }
-  }
-
-  private def choose(): Unit = {
-    val month = 22
-    val periods = month * 3
-    val count = month * 12 * 2 / periods
-
-    val avgFilter: TongStockCompoundIndicators => Boolean = o => {
-      val prices = o.indicators.map(_.avgPrice)
-      val increase = Range(1, prices.size).map(i => prices(i) / prices(i - 1))
-
-      increase.filter(_ < 1).map(1 - _).forall(_ <= 0.11)
-    }
-
-    val list = TongStockApi
-      .listAllDataFromFilepath(dir)
-      .map(o => TongStockHistory(o.code, o.data.drop(22))) // 模拟一个月前预测
-      .map(o => IndicatorsCalculator.calc(o, periods, count))
-      .filter(o => o.indicators.count(_.enough) >= count) // 排除统计区间不足的
-      .filter(o => o.indicators.head.avgPrice <= maxPrice) // 最高单价
-      .filter(o => o.avgDownOscillation <= month * 1.1 || o.maxDownOscillation <= month * 1.5) // 低谷驻留时间 均值不超过** 或 最大值不超过***
-      .filter(_.avgAmplitude >= avgAmplitude) // 平均振幅->行情活跃
-      .filter(o => o.avgVariance <= avgVariance && avgFilter(o)) // 均值方差->稳定
-      .sortBy(_.avgVariance)
+    list.sortBy(_.avgVariance)
 
     log.info("满足条件的有:{}只\n{}", list.size, list.map(_.stock.code.substring(2)).mkString(";"))
 
-    buy(list, filter = true, simulation = true)
+    show(list, filter = true, simulation = simulation)
+  }
+
+  private def show(list: Seq[TongStockCompoundIndicators], filter: Boolean = false, detail: Boolean = false, simulation: Int = 0): Unit = {
+    val currentMap = SinaQuotesApi.getData(list.map(_.stock.code)).map(o => (o.code, o)).toMap
+    val historyMap = list.map(o => (o.stock.code, o)).toMap
+    val map = allData.map(o => (o.code, o.data.takeRight(simulation))).toMap
+
+    list.foreach(_show)
+
+    def _show(indicators: TongStockCompoundIndicators): Unit = {
+      val code = indicators.stock.code
+
+      val history = historyMap(code)
+      val now = currentMap(code)
+
+      val except = history.indicators.map(_.avgPrice).take(2).min
+
+      val simulationPrice = percentageToDecimal(indicators.stock.data.last.closingPrice)
+      val currentPrice = now.currentPrice.toDouble
+      val price = if (simulation > 0) simulationPrice else currentPrice
+
+      val profit = option.minProfitRatio.forall(d => except >= (100 + d) * price / 100)
+      val pass = !now.name.contains("ST") && profit
+
+      if (!pass && filter) return
+
+      if (detail) log.info(history.indicators.map(_.toString).mkString("\n"))
+
+      if (simulation > 0) {
+        val max = map(code).maxBy(_.closingPrice)
+        val maxPrice = percentageToDecimal(max.closingPrice)
+        val simulationPass = maxPrice >= except
+        log.info(
+          "{}\t{}\t{}\t[{}]\t买入:{} -> 预期:{}\t 验证 -> 近期高点:[{}] {}",
+          if (simulationPass) "+++" else "---",
+          code,
+          f"${now.name}%-7s",
+          s"${history.stock.data.last.date}",
+          f"$price%5.2f",
+          f"$except%5.2f",
+          max.date,
+          maxPrice
+        )
+      } else {
+        log.info(
+          "{}\t{}\t{}\t买入:{} -> 预期:{}\t盈利:{}\t{}",
+          if (pass) "+++" else "---",
+          code,
+          f"${now.name}%-7s",
+          f"$price%2.2f",
+          f"$except%2.2f",
+          f"${(except - price) * 100 / price}%.2f${"%"}",
+          history.toString
+        )
+      }
+    }
   }
 }
