@@ -4,10 +4,16 @@ import com.cat.zsy.parser.SinaStockElementParser
 import com.cat.zsy.util.StockUtils
 import scalaj.http.{Http, HttpOptions}
 
+import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
+
 object SinaQuotesApi {
   private val url = "http://hq.sinajs.cn/list="
 
   def getData(codes: Seq[String]): Seq[SinaStockElement] = {
+    codes.grouped(200).toList.par.flatMap(_getData).toList
+  }
+
+  private def _getData(codes: Seq[String]): Seq[SinaStockElement] = {
     Http(url + codes.map(StockUtils.fixCode).mkString(","))
       .header("Charset", "UTF-8")
       .option(HttpOptions.readTimeout(10000))

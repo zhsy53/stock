@@ -41,6 +41,12 @@
             <artifactId>scalaj-http_${scala.major}</artifactId>
             <version>2.4.2</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${scala.major}</artifactId>
+            <version>3.2.0</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -13,6 +13,7 @@
 
     <Loggers>
         <Logger name="com.cat.zsy.strategy" level="debug" additivity="true"/>
+        <Logger name="org" level="error" additivity="true"/>
 
         <Root level="INFO">
             <AppenderRef ref="Console"/>

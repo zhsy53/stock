@@ -8,7 +8,7 @@ import java.nio.file.{Files, Path, Paths}
 import scala.collection.parallel.CollectionConverters.ArrayIsParallelizable
 
 object TongStockApi {
-  val fileSuffix = ".day"
+  private val fileSuffix = ".day"
 
   def getStockSeqByCodeFromClasspath(code: String): Seq[TongStockElement] = TongStockElementParser.parse(Files.readAllBytes(Paths.get(getFileFromClasspath(code + fileSuffix))))
 
@@ -25,16 +25,16 @@ object TongStockApi {
 
     def listDataByFile(file: File): Seq[TongStockElement] = TongStockElementParser.parse(Files.readAllBytes(file.toPath))
 
-    // 创业 (20%)
-    val cy = Seq("sz300")
     // 沪A
     val ha = Seq("sh600", "sh601", "sh603", "sh605")
     // 科创 (20%)
     val kc = Seq("sh688")
     // 深A
     val sa = Seq("sz000", "sz001", "sz002", "sz003")
+    // 创业 (20%)
+    val cy = Seq("sz300")
 
-    val all = Seq.concat(cy, kc, ha, sa)
+    val stocks = Seq.concat(cy, kc, ha, sa)
 
     Paths
       .get(uri)
@@ -42,9 +42,10 @@ object TongStockApi {
       .listFiles
       .filter(_.isFile)
       .filter(_.getName.endsWith(".day"))
-      .filter(f => all.contains(f.getName.substring(0, 5)))
+      .filter(f => stocks.contains(f.getName.substring(0, 5)))
       .par
       .map(f => TongStockHistory(getCodeFromFilename(f.getName), listDataByFile(f)))
+      .filter(_.data.last.date >= 20220101)
       .toList
   }
 

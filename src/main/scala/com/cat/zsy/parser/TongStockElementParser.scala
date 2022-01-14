@@ -5,9 +5,9 @@ import com.cat.zsy.domain.TongStockElement
 import java.nio.ByteBuffer
 
 object TongStockElementParser {
-  def parse(rows: Array[Byte]): Seq[TongStockElement] = rows.grouped(32).map(parseInternal).toSeq
+  def parse(rows: Array[Byte]): Seq[TongStockElement] = rows.grouped(32).map(_parse).toSeq
 
-  private def parseInternal(row: Array[Byte]): TongStockElement = {
+  private def _parse(row: Array[Byte]): TongStockElement = {
     def bytesToInt(bs: Array[Byte]): Int = ByteBuffer.wrap(bs.reverse).getInt()
     def bytesToFloat(bs: Array[Byte]): Float = ByteBuffer.wrap(bs.reverse).getFloat()
 
