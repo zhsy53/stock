@@ -1,6 +1,6 @@
 package com.cat.zsy.strategy
 
-import com.cat.zsy.util.StockUtils.month
+import com.cat.zsy.util.StockUtils._
 
 import scala.collection.mutable.ListBuffer
 
@@ -16,7 +16,7 @@ case class StrategyFilter(
     maxDwnOscillation: Option[Int] = Option.empty, // 最长低谷期
     minAmplitude: Option[Double] = Option.empty, // 最小平均振幅
     maxAvgVariance: Option[Double] = Option.empty, // 最大均值方差
-    maxAvgDownRatio: Option[Double] = Option.empty, // 最大均值增/减幅
+    avgAvgIncrease: Option[(Double, Double)] = Option.empty, // 均值减/增幅
     minProfitRatio: Option[Double] = Option.empty // 最小盈利比(%)
 )
 
@@ -29,14 +29,14 @@ object StrategyDuration {
 
 object StrategyFilter {
   def default: StrategyFilter = StrategyFilter(
-    Option(6),
+    Option(8),
     Option(40.0),
-    Option(month * 1.5.toInt),
+    Option(month * 1.2.toInt),
     Option(month * 1.5.toInt),
     Option(3.0),
     Option(0.01),
-    Option(0.12),
-    Option(3.0)
+    Option((0.08, 0.2)),
+    Option(1.0)
   )
 
   def doFilter(filter: StrategyFilter): Seq[TongStockCompoundIndicators => Boolean] = {
@@ -56,9 +56,9 @@ object StrategyFilter {
 
     filter.minAmplitude.map(o => { t: TongStockCompoundIndicators => t.avgAmplitude >= o }).foreach(buffer += _)
 
-    // and
+    // or
     filter.maxAvgVariance.map(o => { t: TongStockCompoundIndicators => t.avgVariance <= o }).foreach(buffer += _)
-    filter.maxAvgDownRatio.map(o => { t: TongStockCompoundIndicators => increase(t.indicators.map(_.avgPrice)).map(Math.abs).forall(_ <= o) }).foreach(buffer += _)
+    filter.avgAvgIncrease.map(o => { t: TongStockCompoundIndicators => increase(t.indicators.reverse.map(_.avgPrice)).forall(d => d >= -o._1 && d <= o._2) }).foreach(buffer += _)
 
     buffer.toSeq
   }

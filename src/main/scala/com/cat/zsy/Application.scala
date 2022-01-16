@@ -24,7 +24,8 @@ object Application extends App {
 
   val allData = TongStockApi.listAllDataFromFilepath(dir)
 
-//  Range(30 + 60, 30, -1).foreach(t => executeForSimulation(backtracking = t, observation = 33, detail = true))
+  val d = StrategyDuration.default.period / 2
+//  Range(d + 30, d, -1).foreach(t => executeForSimulation(backtracking = t, observation = d, detail = true))
 
   executeForCurrent(always = false)
 
@@ -55,7 +56,7 @@ object Application extends App {
     list.foreach(_show)
 
     log.info(
-      "测试[{}天前]\t盈利:{}/{} -> {}%\t保本:{}/{} -> {}%\n",
+      "测试[{}天前]\t盈利:{}/{} -> {}%\t保本:{}/{} -> {}%",
       backtracking,
       simulationPassCount,
       passCount,
@@ -118,6 +119,53 @@ object Application extends App {
   }
 
   /**
+   * @param always 无论如何总显示
+   * @param detail 显示明细
+   */
+  def executeForCurrent(duration: StrategyDuration = StrategyDuration.default, filter: StrategyFilter = StrategyFilter.default, always: Boolean = false, detail: Boolean = false): Unit = {
+    val list = executeStrategy(duration, filter)
+
+    val currentMap = SinaQuotesApi.getData(list.map(_.stock.code)).map(o => (o.code, o)).toMap
+    val historyMap = list.map(o => (o.stock.code, o)).toMap
+
+    list.foreach(_show)
+
+    def _show(indicators: TongStockCompoundIndicators): Unit = {
+      val code = indicators.stock.code
+
+      val history = historyMap(code)
+      val current = currentMap(code)
+
+      val except = history.indicators.map(_.avgPrice).take(2).min
+      val price = current.currentPrice
+      if (price == 0) {
+        log.error("{} error", code)
+        return
+      }
+
+      // 盈利
+      val profit = filter.minProfitRatio.forall(d => except >= (100 + d) * price / 100)
+
+      val pass = !current.name.contains("ST") && profit
+
+      if (!pass && !always) return
+
+      if (detail) log.info(history.indicators.map(_.toString).mkString("\n"))
+
+      log.info(
+        "{}\t{}\t{}\t买入:{} -> {} [{}%]\t{}",
+        if (pass) "+++" else "---",
+        code,
+        f"${current.name}%-7s",
+        f"$price%5.2f",
+        f"$except%5.2f",
+        f"${(except - price) * 100 / price}%6.2f",
+        history.toString
+      )
+    }
+  }
+
+  /**
    * @param truncate 截断最新数据数 -> 模拟用: <=0则为正式环境
    */
   private def executeStrategy(duration: StrategyDuration = StrategyDuration.default, filter: StrategyFilter = StrategyFilter.default, truncate: Int = 0): Seq[TongStockCompoundIndicators] = {
@@ -140,48 +188,5 @@ object Application extends App {
     val history = if (truncate > 0) allData.map(o => TongStockHistory(o.code, o.data.dropRight(truncate))) else allData
 
     history.map(o => IndicatorsCalculator.calc(o, duration.period, duration.count))
-  }
-
-  /**
-   * @param always 无论如何总显示
-   * @param detail 显示明细
-   */
-  def executeForCurrent(duration: StrategyDuration = StrategyDuration.default, filter: StrategyFilter = StrategyFilter.default, always: Boolean = false, detail: Boolean = false): Unit = {
-    val list = executeStrategy(duration, filter)
-
-    val currentMap = SinaQuotesApi.getData(list.map(_.stock.code)).map(o => (o.code, o)).toMap
-    val historyMap = list.map(o => (o.stock.code, o)).toMap
-
-    list.foreach(_show)
-
-    def _show(indicators: TongStockCompoundIndicators): Unit = {
-      val code = indicators.stock.code
-
-      val history = historyMap(code)
-      val current = currentMap(code)
-
-      val except = history.indicators.map(_.avgPrice).take(2).min
-      val price = current.currentPrice
-
-      // 盈利
-      val profit = filter.minProfitRatio.forall(d => except >= (100 + d) * price / 100)
-
-      val pass = !current.name.contains("ST") && profit
-
-      if (!pass && !always) return
-
-      if (detail) log.info(history.indicators.map(_.toString).mkString("\n"))
-
-      log.info(
-        "{}\t{}\t{}\t买入:{} -> {} [{}%]\t{}",
-        if (pass) "+++" else "---",
-        code,
-        f"${current.name}%-7s",
-        f"$price%5.2f",
-        f"$except%5.2f",
-        f"${(except - price) * 100 / price}%6.2f",
-        history.toString
-      )
-    }
   }
 }
