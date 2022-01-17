@@ -45,7 +45,7 @@ object TongStockApi {
       .filter(f => stocks.contains(f.getName.substring(0, 5)))
       .par
       .map(f => TongStockHistory(getCodeFromFilename(f.getName), listDataByFile(f)))
-      .filter(_.data.last.date >= 20211222)
+      .filter(_.data.last.date >= 20220101)
       .toList
   }
 

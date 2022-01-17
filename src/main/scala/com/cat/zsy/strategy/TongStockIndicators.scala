@@ -20,5 +20,5 @@ case class TongStockIndicators(
   // 最大低谷
   def maxTrough: Int = -oscillation.min
   // 平均低谷
-  def avgTrough: Double = avg(oscillation.filter(_ < 0).map(-_))
+  def avgTrough: Double = -avg(oscillation.filter(_ < 0))
 }

@@ -7,12 +7,13 @@ case class TongStockCompoundIndicators(stock: TongStockHistory, duration: Strate
     f"方差:$avgVariance%9.6f\t" +
     f"日涨幅:$avgIncrease%9.6f\t" +
     f"日振幅:$avgAmplitude%9.6f\t" +
-    f"低谷: ${Math.max(-1, -indicators.last.oscillation.last)} -> $avgTrough%2.0f/$maxTrough%2d\t" +
+    f"低谷: ${Math.max(-1, -indicators.head.oscillation.last)} -> $avgTrough%2.0f/$maxTrough%2d\t" +
     s"均价曲线:${formatArray(indicators.map(_.avgPrice).map(String.format("%.2f", _)))}\t" +
     s"低谷曲线:${formatArray(indicators.map(_.maxTrough))}"
 
   // 最长低谷
   def maxTrough: Int = indicators.map(_.maxTrough).max
+
   // 平均低谷
   def avgTrough: Double = avg(indicators.map(_.avgTrough))
 
@@ -20,12 +21,12 @@ case class TongStockCompoundIndicators(stock: TongStockHistory, duration: Strate
   def avgAmplitude: Double = avg(indicatorsData.map(o => (o.highestPrice - o.lowestPrice) * 100 / o.openingPrice))
 
   // 均价
-  def avgPrice: Double = indicatorsData.map(_.closingPrice).sum.toDouble / (indicatorsData.size * 100)
+  def avgPrice: Double = (indicatorsData.map(_.closingPrice).sum / 100.0) / indicatorsData.size
+
+  private def indicatorsData = stock.data.takeRight(duration.period * duration.count)
 
   def avgVariance: Double = variance(indicatorsData.map(_.closingPrice))
 
   // 平均增幅
   def avgIncrease: Double = avg(increase(indicatorsData.map(_.closingPrice)))
-
-  private def indicatorsData = stock.data.takeRight(duration.period * duration.count)
 }

@@ -2,7 +2,7 @@ package com.cat.zsy
 
 import com.cat.zsy.api.{SinaQuotesApi, TongStockApi}
 import com.cat.zsy.domain.TongStockHistory
-import com.cat.zsy.strategy.StrategyFilter.execute
+import com.cat.zsy.strategy.StrategyFilter._
 import com.cat.zsy.strategy._
 import com.cat.zsy.util.StockUtils
 import com.cat.zsy.util.StockUtils._
@@ -10,25 +10,16 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 
-/**
- * 关注
- * 300718;300461;300200;002050;002043;000063;300094;000888;002851;000938;000712;000927;002207；
- * 601919;600988;688981;
- *
- * 待定
- * 000878;002214;300117;300369;300719;600739;603186
- * 其中:300369;002214;
- */
 object Application extends App {
   val log = LoggerFactory.getLogger(this.getClass)
-//  val dir = "/Users/xiu/Downloads/stock"
-  val dir = "D:\\stock"
+  val dir = "/Users/xiu/Downloads/stock"
+//  val dir = "D:\\stock"
 
   val begin = System.currentTimeMillis()
 
   val allData = TongStockApi.listAllDataFromFilepath(dir)
 
-  val want = "002050;300718;300094;300461".split(";").distinct.sorted.map(StockUtils.fixCode).toList
+//  val want = "002050;300718;300094;300461".split(";").distinct.sorted.map(StockUtils.fixCode).toList
 
   val minProfitRatio = Option(4.5)
 
@@ -180,7 +171,7 @@ object Application extends App {
 
     log.info("共有待选[{}]只", data.size)
 
-    val list = data.par.filter(execute(filter)).toList.sortBy(_.avgIncrease)
+    val list = data.par.filter(builder(filter)).toList.sortBy(_.avgVariance)
 
     log.info("满足当前策略(不考虑入场时机)的有[{}]只:\n{}", list.size, list.map(_.stock.code.substring(2)).mkString(";"))
 

@@ -7,7 +7,7 @@ import scala.collection.mutable.ListBuffer
 
 object IndicatorsCalculator {
   def calc(seq: TongStockHistory, duration: StrategyDuration): TongStockCompoundIndicators = {
-    TongStockCompoundIndicators(seq, duration, seq.data.reverse.grouped(duration.period).toSeq.take(duration.count).map(o => _calc(o, duration.period)).filter(_.enough))
+    TongStockCompoundIndicators(seq, duration, seq.data.reverse.grouped(duration.period).toSeq.take(duration.count).map(_.reverse).map(_calc(_, duration.period)).filter(_.enough))
   }
 
   private def _calc(data: Seq[TongStockElement], period: Int): TongStockIndicators = {
@@ -24,7 +24,7 @@ object IndicatorsCalculator {
       closingList.max.toDouble / 100,
       closingList.min.toDouble / 100,
       _oscillation(closingList, mean),
-      avg(data.reverse.map(o => (o.highestPrice - o.lowestPrice) * 100.toDouble / o.openingPrice))
+      avg(data.reverse.map(o => (o.highestPrice - o.lowestPrice) * 100 / o.openingPrice))
     )
   }
 

@@ -35,15 +35,11 @@ object StrategyFilter {
     // 振幅
     Option(3.5),
     // 均幅
-    Option(-0.002),
-    Option(0.0022)
+    Option(0),
+    Option(0.0065)
   )
 
-  def execute(filter: StrategyFilter): TongStockCompoundIndicators => Boolean = o => {
-    builder(filter).forall(_(o))
-  }
-
-  private def builder(filter: StrategyFilter): Seq[TongStockCompoundIndicators => Boolean] = {
+  def builder(filter: StrategyFilter): TongStockCompoundIndicators => Boolean = {
     val buffer = ListBuffer[TongStockCompoundIndicators => Boolean]()
 
     filter.minCount.map(o => { t: TongStockCompoundIndicators => t.indicators.count(_.enough) >= o }).foreach(buffer += _)
@@ -57,6 +53,6 @@ object StrategyFilter {
 
     filter.maxAvgIncrease.map(o => { t: TongStockCompoundIndicators => between(t.avgIncrease, 0, o) }).foreach(buffer += _)
 
-    buffer.toSeq
+    o => buffer.toSeq.forall(_(o))
   }
 }
