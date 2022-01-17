@@ -4,7 +4,6 @@ import com.cat.zsy.api.{SinaQuotesApi, TongStockApi}
 import com.cat.zsy.domain.TongStockHistory
 import com.cat.zsy.strategy.StrategyFilter._
 import com.cat.zsy.strategy._
-import com.cat.zsy.util.StockUtils
 import com.cat.zsy.util.StockUtils._
 import org.slf4j.LoggerFactory
 
@@ -134,7 +133,7 @@ object Application extends App {
       val history = historyMap(code)
       val current = currentMap(code)
 
-      val except = history.indicators.map(_.avgPrice).take(2).min
+      val except = Math.min(history.avgPrice, history.indicators.map(_.avgPrice).take(2).min)
       val price = current.currentPrice
       if (price == 0) {
         log.error("{} error", code)

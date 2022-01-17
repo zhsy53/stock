@@ -4,9 +4,9 @@ import com.cat.zsy.util.StockUtils.{avg, formatArray, increase, variance}
 
 case class TongStockCompoundIndicators(stock: TongStockHistory, duration: StrategyDuration, indicators: Seq[TongStockIndicators]) {
   override def toString: String = f"均价:$avgPrice%.2f\t" +
-    f"方差:$avgVariance%9.6f\t" +
-    f"日涨幅:$avgIncrease%9.6f\t" +
-    f"日振幅:$avgAmplitude%9.6f\t" +
+    f"方差:${avgVariance * 100}%4.2f\t" +
+    f"日涨:${avgIncrease * 1000}%4.2f\t" +
+//    f"日振幅:$avgAmplitude%9.6f\t" +
     f"低谷: ${Math.max(-1, -indicators.head.oscillation.last)} -> $avgTrough%2.0f/$maxTrough%2d\t" +
     s"均价曲线:${formatArray(indicators.map(_.avgPrice).map(String.format("%.2f", _)))}\t" +
     s"低谷曲线:${formatArray(indicators.map(_.maxTrough))}"
@@ -17,16 +17,16 @@ case class TongStockCompoundIndicators(stock: TongStockHistory, duration: Strate
   // 平均低谷
   def avgTrough: Double = avg(indicators.map(_.avgTrough))
 
-  // 平均振幅(%)
-  def avgAmplitude: Double = avg(indicatorsData.map(o => (o.highestPrice - o.lowestPrice) * 100 / o.openingPrice))
-
   // 均价
   def avgPrice: Double = (indicatorsData.map(_.closingPrice).sum / 100.0) / indicatorsData.size
-
-  private def indicatorsData = stock.data.takeRight(duration.period * duration.count)
 
   def avgVariance: Double = variance(indicatorsData.map(_.closingPrice))
 
   // 平均增幅
   def avgIncrease: Double = avg(increase(indicatorsData.map(_.closingPrice)))
+
+  // 平均振幅(%)
+  def avgAmplitude: Double = avg(indicatorsData.map(o => (o.highestPrice - o.lowestPrice) * 100 / o.openingPrice))
+
+  private def indicatorsData = stock.data.takeRight(duration.period * duration.count)
 }
