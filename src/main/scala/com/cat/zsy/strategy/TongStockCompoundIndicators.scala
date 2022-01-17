@@ -1,33 +1,31 @@
 package com.cat.zsy.strategy
 import com.cat.zsy.domain.TongStockHistory
-import com.cat.zsy.util.StockUtils.{avg, formatArray}
+import com.cat.zsy.util.StockUtils.{avg, formatArray, increase, variance}
 
-case class TongStockCompoundIndicators(stock: TongStockHistory, indicators: Seq[TongStockIndicators]) {
+case class TongStockCompoundIndicators(stock: TongStockHistory, duration: StrategyDuration, indicators: Seq[TongStockIndicators]) {
   override def toString: String = f"均价:$avgPrice%.2f\t" +
-    f"方差:$avgVariance%.4f\t" +
-    f"振幅:$avgAmplitude%.2f\t" +
-    f"低谷: ${Math.max(-1, -indicators.last.oscillation.last)} -> $avgDownOscillation%2.0f/$maxDownOscillation%2d\t" +
+    f"方差:$avgVariance%9.6f\t" +
+    f"日涨幅:$avgIncrease%9.6f\t" +
+    f"日振幅:$avgAmplitude%9.6f\t" +
+    f"低谷: ${Math.max(-1, -indicators.last.oscillation.last)} -> $avgTrough%2.0f/$maxTrough%2d\t" +
     s"均价曲线:${formatArray(indicators.map(_.avgPrice).map(String.format("%.2f", _)))}\t" +
-    s"低谷曲线:${formatArray(indicators.map(_.maxDownOscillation))}"
+    s"低谷曲线:${formatArray(indicators.map(_.maxTrough))}"
 
   // 最长低谷
-  def maxDownOscillation: Int = indicators.map(_.maxDownOscillation).max
-
+  def maxTrough: Int = indicators.map(_.maxTrough).max
   // 平均低谷
-  def avgDownOscillation: Double = avg(indicators.map(_.avgDownOscillation))
+  def avgTrough: Double = avg(indicators.map(_.avgTrough))
 
-  // 平均振幅
-  def avgAmplitude: Double = avg(indicators.map(_.avgAmplitude))
+  // 平均振幅(%)
+  def avgAmplitude: Double = avg(indicatorsData.map(o => (o.highestPrice - o.lowestPrice) * 100 / o.openingPrice))
 
-  // 均值方差均值
-  def avgVariance: Double = avg(indicators.map(_.avgVariance))
+  // 均价
+  def avgPrice: Double = indicatorsData.map(_.closingPrice).sum.toDouble / (indicatorsData.size * 100)
 
-  def avgPrice: Double = avg(indicators.map(_.avgPrice))
+  def avgVariance: Double = variance(indicatorsData.map(_.closingPrice))
 
-  //    f"均价方差曲线:${formatArray(indicators.map(_.avgVariance).map(String.format("%.4f", _)))}" +
-//    formatArray(indicators.map(_.avgPrice).zip(indicators.map(_.avgVariance)).map(t => f"${t._1}%.2f -> ${t._2}%.4f"))
+  // 平均增幅
+  def avgIncrease: Double = avg(increase(indicatorsData.map(_.closingPrice)))
 
-//    f"平均低谷:$avgDownOscillation%3.0f\t最长低谷:$maxDownOscillation%3d\t" +
-//    f"平均振幅:$avgAmplitude%.2f\t" +
-//    s"振幅曲线:${formatArray(indicators.map(_.avgAmplitude).map(String.format("%.1f", _)))}"
+  private def indicatorsData = stock.data.takeRight(duration.period * duration.count)
 }

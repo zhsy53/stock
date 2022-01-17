@@ -25,4 +25,6 @@ object StockUtils {
   def divPercentage(a: Int, b: Int): Double = if (b == 0) 100 else a * 100.0 / b
 
   def between(d: Double, d1: Double, d2: Double): Boolean = d >= d1 && d <= d2
+
+  def increase(seq: Seq[Double]): Seq[Double] = Range(1, seq.size).map(i => seq(i) / seq(i - 1)).map(_ - 1)
 }

@@ -13,8 +13,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <scala.major>2.13</scala.major>
-        <scala.version>2.13.7</scala.version>
-        <log4j.version>2.17.0</log4j.version>
+        <scala.version>2.13.8</scala.version>
+        <log4j.version>2.17.1</log4j.version>
     </properties>
 
     <dependencies>
@@ -28,6 +28,24 @@
             <groupId>org.scala-lang.modules</groupId>
             <artifactId>scala-parallel-collections_${scala.major}</artifactId>
             <version>1.0.4</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.scala-lang</groupId>
+                    <artifactId>scala-library</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scalaj</groupId>
+            <artifactId>scalaj-http_${scala.major}</artifactId>
+            <version>2.4.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.scala-lang</groupId>
+                    <artifactId>scala-library</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -36,27 +54,17 @@
             <version>${log4j.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.scalaj</groupId>
-            <artifactId>scalaj-http_${scala.major}</artifactId>
-            <version>2.4.2</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_${scala.major}</artifactId>
-            <version>3.2.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.scala-lang.modules</groupId>
-                    <artifactId>scala-parallel-collections_${scala.major}</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>org.apache.spark</groupId>-->
+        <!--            <artifactId>spark-sql_${scala.major}</artifactId>-->
+        <!--            <version>3.2.0</version>-->
+        <!--            <exclusions>-->
+        <!--                <exclusion>-->
+        <!--                    <groupId>org.scala-lang.modules</groupId>-->
+        <!--                    <artifactId>scala-parallel-collections_${scala.major}</artifactId>-->
+        <!--                </exclusion>-->
+        <!--            </exclusions>-->
+        <!--        </dependency>-->
     </dependencies>
 
     <build>

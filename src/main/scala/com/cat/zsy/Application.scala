@@ -2,9 +2,13 @@ package com.cat.zsy
 
 import com.cat.zsy.api.{SinaQuotesApi, TongStockApi}
 import com.cat.zsy.domain.TongStockHistory
+import com.cat.zsy.strategy.StrategyFilter.execute
 import com.cat.zsy.strategy._
-import com.cat.zsy.util.StockUtils.{divPercentage, percentageToDouble}
+import com.cat.zsy.util.StockUtils
+import com.cat.zsy.util.StockUtils._
 import org.slf4j.LoggerFactory
+
+import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 
 /**
  * 关注
@@ -17,14 +21,17 @@ import org.slf4j.LoggerFactory
  */
 object Application extends App {
   val log = LoggerFactory.getLogger(this.getClass)
-  val dir = "/Users/xiu/Downloads/stock"
-  //  val dir = "D:\\stock"
+//  val dir = "/Users/xiu/Downloads/stock"
+  val dir = "D:\\stock"
 
   val begin = System.currentTimeMillis()
 
   val allData = TongStockApi.listAllDataFromFilepath(dir)
 
-  val d = StrategyDuration.default.period / 2
+  val want = "002050;300718;300094;300461".split(";").distinct.sorted.map(StockUtils.fixCode).toList
+
+  val minProfitRatio = Option(4.5)
+
 //  Range(d + 30, d, -1).foreach(t => executeForSimulation(backtracking = t, observation = d, detail = true))
 
   executeForCurrent(always = false)
@@ -38,7 +45,7 @@ object Application extends App {
    * @param observation 观察天数 >= backtracking
    */
   def executeForSimulation(
-      duration: StrategyDuration = StrategyDuration.default,
+      duration: StrategyDuration = StrategyDuration(),
       filter: StrategyFilter = StrategyFilter.default,
       backtracking: Int = 23,
       observation: Int = 22,
@@ -75,7 +82,7 @@ object Application extends App {
 
       val price = percentageToDouble(indicators.stock.data.last.closingPrice)
 
-      val profit = filter.minProfitRatio.forall(d => except >= (100 + d) * price / 100)
+      val profit = minProfitRatio.forall(d => except >= (100 + d) * price / 100)
 
       // 根据策略决定是否进场
       val pass = profit
@@ -122,7 +129,7 @@ object Application extends App {
    * @param always 无论如何总显示
    * @param detail 显示明细
    */
-  def executeForCurrent(duration: StrategyDuration = StrategyDuration.default, filter: StrategyFilter = StrategyFilter.default, always: Boolean = false, detail: Boolean = false): Unit = {
+  def executeForCurrent(duration: StrategyDuration = StrategyDuration(), filter: StrategyFilter = StrategyFilter.default, always: Boolean = false, detail: Boolean = false): Unit = {
     val list = executeStrategy(duration, filter)
 
     val currentMap = SinaQuotesApi.getData(list.map(_.stock.code)).map(o => (o.code, o)).toMap
@@ -144,7 +151,7 @@ object Application extends App {
       }
 
       // 盈利
-      val profit = filter.minProfitRatio.forall(d => except >= (100 + d) * price / 100)
+      val profit = minProfitRatio.forall(d => except >= (100 + d) * price / 100)
 
       val pass = !current.name.contains("ST") && profit
 
@@ -168,25 +175,21 @@ object Application extends App {
   /**
    * @param truncate 截断最新数据数 -> 模拟用: <=0则为正式环境
    */
-  private def executeStrategy(duration: StrategyDuration = StrategyDuration.default, filter: StrategyFilter = StrategyFilter.default, truncate: Int = 0): Seq[TongStockCompoundIndicators] = {
-    var list = loadData(duration, truncate)
+  private def executeStrategy(duration: StrategyDuration = StrategyDuration(), filter: StrategyFilter = StrategyFilter.default, truncate: Int = 0): Seq[TongStockCompoundIndicators] = {
+    val data = loadData(duration, truncate)
 
-    log.debug("共有待选[{}]只", list.size)
+    log.info("共有待选[{}]只", data.size)
 
-    StrategyFilter.doFilter(filter).foreach(f => list = list.filter(f))
+    val list = data.par.filter(execute(filter)).toList.sortBy(_.avgIncrease)
 
-    list.sortBy(_.avgVariance)
-
-    log.debug("满足当前策略(不考虑入场时机)的有[{}]只:\n{}", list.size, list.map(_.stock.code.substring(2)).mkString(";"))
+    log.info("满足当前策略(不考虑入场时机)的有[{}]只:\n{}", list.size, list.map(_.stock.code.substring(2)).mkString(";"))
 
     list
   }
 
-  private def loadData(duration: StrategyDuration = StrategyDuration.default, truncate: Int = 0): Seq[TongStockCompoundIndicators] = {
-    log.debug("共有{}只", allData.size)
-
+  private def loadData(duration: StrategyDuration = StrategyDuration(), truncate: Int = 0): Seq[TongStockCompoundIndicators] = {
     val history = if (truncate > 0) allData.map(o => TongStockHistory(o.code, o.data.dropRight(truncate))) else allData
 
-    history.map(o => IndicatorsCalculator.calc(o, duration.period, duration.count))
+    history.map(o => IndicatorsCalculator.calc(o, duration))
   }
 }
