@@ -11,8 +11,8 @@ import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParalle
 
 object Application extends App {
   val log = LoggerFactory.getLogger(this.getClass)
-  val dir = "/Users/xiu/Downloads/stock"
-//  val dir = "D:\\stock"
+//  val dir = "/Users/xiu/Downloads/stock"
+  val dir = "D:\\stock"
 
   val begin = System.currentTimeMillis()
 
@@ -20,7 +20,7 @@ object Application extends App {
 
 //  val want = "002050;300718;300094;300461".split(";").distinct.sorted.map(StockUtils.fixCode).toList
 
-  val minProfitRatio = Option(4.5)
+  val minProfitRatio = Option(3.0)
 
 //  Range(d + 30, d, -1).foreach(t => executeForSimulation(backtracking = t, observation = d, detail = true))
 
@@ -170,7 +170,7 @@ object Application extends App {
 
     log.info("共有待选[{}]只", data.size)
 
-    val list = data.par.filter(builder(filter)).toList.sortBy(_.avgVariance)
+    val list = data.par.filter(builder(filter)).toList.sortBy(o => o.avgAmplitude / o.avgVariance)
 
     log.info("满足当前策略(不考虑入场时机)的有[{}]只:\n{}", list.size, list.map(_.stock.code.substring(2)).mkString(";"))
 
