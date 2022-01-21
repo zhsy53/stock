@@ -10,15 +10,7 @@ import scala.collection.parallel.CollectionConverters.ArrayIsParallelizable
 object TongStockApi {
   private val fileSuffix = ".day"
 
-  def getStockSeqByCodeFromClasspath(code: String): Seq[TongStockElement] = TongStockElementParser.parse(Files.readAllBytes(Paths.get(getFileFromClasspath(code + fileSuffix))))
-
-  private def getFileFromClasspath(filename: String): URI = this.getClass.getResource("/" + filename).toURI
-
   def getStockSeqByCodeFromDir(code: String, dir: String): Seq[TongStockElement] = TongStockElementParser.parse(Files.readAllBytes(Path.of(dir + File.separator + code + fileSuffix)))
-
-  def listAllDataFromClasspath: Seq[TongStockHistory] = listAllData(getDirFromClasspath)
-
-  private def getDirFromClasspath: URI = this.getClass.getResource("/").toURI
 
   private def listAllData(uri: URI): Seq[TongStockHistory] = {
     def getCodeFromFilename(filename: String): String = filename.substring(0, filename.indexOf(fileSuffix))
