@@ -1,5 +1,5 @@
 package com.cat.zsy.strategy.config
-import com.cat.zsy.util.StockUtils.month
+import com.cat.zsy.util.MathUtils.month
 
 /**
  * 统计空间

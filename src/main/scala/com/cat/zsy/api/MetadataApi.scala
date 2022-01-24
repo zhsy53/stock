@@ -1,32 +1,21 @@
 package com.cat.zsy.api
 import com.cat.zsy.domain.MetadataElement
-import org.apache.poi.ss.usermodel.WorkbookFactory
+import com.cat.zsy.util.FileUtils
+import org.apache.poi.ss.usermodel._
 
-import java.io.{BufferedReader, File, FileReader}
-import java.net.URI
-import java.nio.file.Paths
-import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
+import scala.jdk.CollectionConverters._
 import scala.util.Using
 
 object MetadataApi {
-  private def getFileFromClasspath(filename: String): URI = this.getClass.getResource("/" + filename).toURI
-
-  class SafeFileReader(file: File)(implicit manager: Using.Manager) extends BufferedReader(new FileReader(file)) {
-    def this(fileName: String)(implicit manager: Using.Manager) = this(new File(fileName))
-
-    manager.acquire(this)
-  }
-
-  // TODO
-  def getData: Seq[MetadataElement] = {
-    // val files = Paths.get(getDirFromClasspath).toFile.listFiles().filter(_.isFile).filter(_.getName.matches(".*\\.xls.?$"))
-
-    def getSheet(filename: String) = WorkbookFactory.create(Paths.get(getFileFromClasspath(filename)).toFile).getSheetAt(0)
-
-    val sh = getSheet("sh.xls").map(row => MetadataElement(row.getCell(2).getStringCellValue, row.getCell(1).getStringCellValue)).toSeq
-
-    val sz = getSheet("sz.xlsx").map(row => MetadataElement(row.getCell(4).getStringCellValue, row.getCell(5).getStringCellValue)).toSeq
+  def getData: Seq[MetadataElement] = Using.Manager { use =>
+    def workbookToData(workbook: Workbook, rowParser: Row => MetadataElement): Seq[MetadataElement] = workbook.getSheetAt(0).iterator.asScala.map(rowParser).toSeq
+    val w1 = use(getWorkbook("sh.xls"))
+    val w2 = use(getWorkbook("sz.xlsx"))
+    val sh = workbookToData(w1, r => MetadataElement(r.getCell(2).getStringCellValue, r.getCell(1).getStringCellValue))
+    val sz = workbookToData(w2, r => MetadataElement(r.getCell(4).getStringCellValue, r.getCell(5).getStringCellValue))
 
     sh ++ sz
-  }
+  }.get
+
+  private def getWorkbook(filename: String): Workbook = WorkbookFactory.create(FileUtils.getFileFromClasspath(filename))
 }

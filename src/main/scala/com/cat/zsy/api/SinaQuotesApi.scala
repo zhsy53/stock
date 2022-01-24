@@ -1,8 +1,8 @@
 package com.cat.zsy.api
 import com.cat.zsy.domain.SinaStockElement
 import com.cat.zsy.parser.SinaStockElementParser
-import com.cat.zsy.util.StockUtils
-import scalaj.http.{Http, HttpOptions}
+import com.cat.zsy.util.MathUtils
+import scalaj.http._
 
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 
@@ -14,7 +14,7 @@ object SinaQuotesApi {
   }
 
   private def _getData(codes: Seq[String]): Seq[SinaStockElement] = {
-    Http(url + codes.map(StockUtils.fixCode).mkString(","))
+    Http(url + codes.map(MathUtils.fixCode).mkString(","))
       .header("Charset", "UTF-8")
       .option(HttpOptions.readTimeout(10000))
       .asString

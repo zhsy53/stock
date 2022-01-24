@@ -17,4 +17,6 @@ class TruncateDataHandler(slice: StockSlice) extends DataHandler[Seq[TongStockEl
 
 object TruncateDataHandler {
   def mapper(h: DataHandler[Seq[TongStockElement]]): DataHandler[TongStockHistory] = t => TongStockHistory(t.code, h.handle(t.data))
+
+  def apply(slice: StockSlice): DataHandler[TongStockHistory] = mapper(new TruncateDataHandler(slice))
 }

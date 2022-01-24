@@ -10,15 +10,15 @@ trait DataFilter[T] { def filter(t: T): Boolean }
 
 object DataFilter { def compose[T](fs: Seq[DataFilter[T]]): DataFilter[T] = t => fs.forall(h => h.filter(t)) }
 
-class CodeFilter(o: Seq[String]) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = o.contains(t.code.substring(2)) }
+private class CodeFilter(o: Seq[String]) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = o.contains(t.code.substring(2)) }
 
-class EnoughFilter(o: Int) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = t.data.size >= o }
+private class EnoughFilter(o: Int) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = t.data.size >= o }
 
-class MaxPriceFilter(o: Double) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = TongStockPriceIndicator(t.data).avgPrice <= o }
+private class MaxPriceFilter(o: Double) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = TongStockPriceIndicator(t.data).avgPrice <= o }
 
-class MinAmplitudeFilter(o: Double) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = TongStockPriceIndicator(t.data).avgAmplitude >= o }
+private class MinAmplitudeFilter(o: Double) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = TongStockPriceIndicator(t.data).avgAmplitude >= o }
 
-class MaxAvgVarianceFilter(o: Double) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = TongStockPriceIndicator(t.data).avgVariance <= o }
+private class MaxAvgVarianceFilter(o: Double) extends DataFilter[TongStockHistory] { override def filter(t: TongStockHistory): Boolean = TongStockPriceIndicator(t.data).avgVariance <= o }
 
 class PriceIndicatorFilter(o: PriceStrategyOption) extends DataFilter[TongStockHistory] {
   override def filter(t: TongStockHistory): Boolean = {
@@ -33,3 +33,5 @@ class PriceIndicatorFilter(o: PriceStrategyOption) extends DataFilter[TongStockH
     DataFilter.compose(buffer.toList).filter(t)
   }
 }
+
+object PriceIndicatorFilter { def apply(o: PriceStrategyOption) = new PriceIndicatorFilter(o) }

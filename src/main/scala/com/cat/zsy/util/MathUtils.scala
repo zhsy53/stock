@@ -1,9 +1,10 @@
 package com.cat.zsy.util
 
 import scala.Numeric.Implicits._
+import scala.collection.mutable
 import scala.language.implicitConversions
 
-object StockUtils {
+object MathUtils {
   val month = 22
 
   def fixCode(code: String): String = if (code.length == 8) code else if (code.startsWith("6")) "sh" + code else "sz" + code
@@ -27,4 +28,8 @@ object StockUtils {
   def between(d: Double, d1: Double, d2: Double): Boolean = d >= d1 && d <= d2
 
   def increase(seq: Seq[Double]): Seq[Double] = Range(1, seq.size).map(i => seq(i) / seq(i - 1)).map(_ - 1)
+
+  def counts[T](xs: IterableOnce[T]): Map[T, Int] = {
+    xs.iterator.foldLeft(mutable.Map.empty[T, Int].withDefaultValue(0))((acc, x) => { acc(x) += 1; acc }).toMap
+  }
 }

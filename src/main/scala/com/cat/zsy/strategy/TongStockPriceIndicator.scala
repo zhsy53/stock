@@ -1,6 +1,6 @@
 package com.cat.zsy.strategy
 import com.cat.zsy.domain._
-import com.cat.zsy.util.StockUtils._
+import com.cat.zsy.util.MathUtils._
 import com.cat.zsy.util._
 
 case class TongStockPriceIndicator(data: Seq[TongStockElement]) {
@@ -13,7 +13,7 @@ case class TongStockPriceIndicator(data: Seq[TongStockElement]) {
   def avgIncrease: Double = avg(increase(data.map(_.closingPrice)))
 
   // 平均振幅(%)
-  def avgAmplitude: Double = avg(data.map(o => (o.highestPrice - o.lowestPrice) * 100.toDouble / o.openingPrice))
+  def avgAmplitude: Double = avg(data.map(_.amplitude))
 
   // 均值震荡曲线
   def oscillation: Seq[Int] = OscillationCalculator.oscillation(data.map(_.closingPrice), data.map(_.closingPrice).sum / data.size)

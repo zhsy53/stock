@@ -1,7 +1,7 @@
 package com.cat.zsy.strategy.config
 
 /**
- * @param codes 编码
+ * @param codes 编码:不带前缀
  * @param count 统计数量
  * @param maxPrice 最高价
  * @param minAmplitude 最小平均振幅
