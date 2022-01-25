@@ -13,14 +13,14 @@ object Application extends App {
 
   private val begin = System.currentTimeMillis()
 
+//  listBySliceAndSorted(StockSlice(month * 4)).foreach(done)
+
   private val end = System.currentTimeMillis()
 
   log.warn("cost " + (end - begin) + " mills")
 
-  private def done(t: TongStockHistory): Unit = {}
-
   private def showIncrease(): Unit = {
-    listBySliceAndSorted(StockSlice(month * 6))
+    listBySliceAndSorted(StockSlice(month * 4))
       .map(o => {
         val code = o.code
         val min = o.data.minBy(_.lowestPrice)

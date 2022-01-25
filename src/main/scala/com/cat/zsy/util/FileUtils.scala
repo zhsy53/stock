@@ -12,4 +12,6 @@ object FileUtils {
   def getInputStreamFromClasspath(filename: String): InputStream = getClass.getResourceAsStream("/" + filename)
 
   def getBufferedSourceFromClasspath(filename: String): BufferedSource = Source.fromResource(filename)
+
+  def isToBytes(is: InputStream): Array[Byte] = LazyList.continually(is.read).takeWhile(_ != -1).map(_.toByte).toArray
 }
